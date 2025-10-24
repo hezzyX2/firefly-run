@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Firefly Run — Clean Build</title>
+  <meta name="theme-color" content="#06240f" />
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="nav">
+    <div class="brand">🪄 Firefly Run</div>
+    <nav>
+      <button id="btn-play" class="btn">Play</button>
+      <button id="btn-levels" class="btn ghost">Levels</button>
+      <button id="btn-stats" class="btn ghost">Stats</button>
+      <button id="btn-options" class="btn ghost">Options</button>
+    </nav>
+  </header>
+
+  <main id="hero">
+    <h1>Firefly Run — <span>Clean Build</span></h1>
+    <p class="tag">Fresh package with no caching, no service worker, and bulletproof button wiring.</p>
+    <div class="cta">
+      <button id="cta-play" class="btn xl">▶ Play Now</button>
+      <button id="cta-how" class="btn ghost">How to Play</button>
+    </div>
+    <ul class="quick">
+      <li>WASD / Arrows to move</li>
+      <li>R to restart • Esc for menu</li>
+      <li>No service worker — nothing to cache-bust</li>
+    </ul>
+    <canvas id="bg" width="1200" height="420" aria-hidden="true"></canvas>
+  </main>
+
+  <section id="panel" class="panel hidden" aria-live="polite"></section>
+
+  <div class="canvasWrap"><canvas id="game" width="960" height="520"></canvas></div>
+
+  <footer class="foot">© 2025 Firefly Run • Nature theme</footer>
+
+  <script src="game.js"></script>
+</body>
+</html>
