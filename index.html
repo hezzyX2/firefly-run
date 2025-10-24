@@ -4,9 +4,11 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Firefly Run — Clean Build</title>
-  <meta name="theme-color" content="#06240f" />
+
+  <!-- No manifest here; we are disabling PWA for now -->
+  <!-- Point to the new filenames (not *_v3.*) and bust caches with ?v=5 -->
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
   <header class="nav">
@@ -21,7 +23,7 @@
 
   <main id="hero">
     <h1>Firefly Run — <span>Clean Build</span></h1>
-    <p class="tag">Fresh package with no caching, no service worker, and bulletproof button wiring.</p>
+    <p class="tag">No service worker. No v3 files. Buttons wired after DOM load.</p>
     <div class="cta">
       <button id="cta-play" class="btn xl">▶ Play Now</button>
       <button id="cta-how" class="btn ghost">How to Play</button>
@@ -29,17 +31,30 @@
     <ul class="quick">
       <li>WASD / Arrows to move</li>
       <li>R to restart • Esc for menu</li>
-      <li>No service worker — nothing to cache-bust</li>
     </ul>
     <canvas id="bg" width="1200" height="420" aria-hidden="true"></canvas>
   </main>
 
   <section id="panel" class="panel hidden" aria-live="polite"></section>
-
   <div class="canvasWrap"><canvas id="game" width="960" height="520"></canvas></div>
-
   <footer class="foot">© 2025 Firefly Run • Nature theme</footer>
 
-  <script src="game.js"></script>
+  <!-- HARD KILL any old service worker + caches so v3 can’t take over -->
+  <script>
+    (async () => {
+      try {
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(r => r.unregister()));
+        }
+        if (window.caches) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(k => caches.delete(k)));
+        }
+      } catch (e) {}
+    })();
+  </script>
+
+  <script defer src="game.js?v=5"></script>
 </body>
 </html>
