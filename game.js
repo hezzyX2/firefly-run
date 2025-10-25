@@ -1,3 +1,10 @@
+/*
+Updated game.js — adds settings UI (speed, chase, smart chase), persists settings,
+applies theme to background drawing, normalizes movement, and uses event listeners
+so header buttons (index.html) can call into window.__firefly* APIs.
+
+Replace your existing game.js with this file.
+*/
 (function(){
   function main(){
     const $ = s => document.querySelector(s);
@@ -7,29 +14,43 @@
     const ctx = game.getContext && game.getContext('2d');
     if(!ctx){ console.error('game.js: failed to get canvas context'); return; }
 
+    // --- settings (persisted) ---
+    const defaultSettings = { speedMultiplier: 1.0, chaseFactor: 0.0, smartChase: false, theme: 'dark' };
+    let settings = defaultSettings;
+    try{ const s = localStorage.getItem('fireflySettings'); if(s) settings = Object.assign({}, defaultSettings, JSON.parse(s)); } catch(e){}
+    window.__fireflySettings = settings;
+    function saveSettings(){ try{ localStorage.setItem('fireflySettings', JSON.stringify(settings)); }catch(e){} }
+
+    // background loop (uses theme)
     (function loop(ts){
       const w = bg.width, h = bg.height, b = bg.getContext('2d');
       if(!b) return;
       b.clearRect(0,0,w,h);
-      const g = b.createLinearGradient(0,0,0,h); g.addColorStop(0,'#0b2c1b'); g.addColorStop(1,'#06180d');
+      const g = b.createLinearGradient(0,0,0,h);
+      if(settings.theme === 'light') { g.addColorStop(0,'#f6fff6'); g.addColorStop(1,'#eaf7ea'); }
+      else { g.addColorStop(0,'#0b2c1b'); g.addColorStop(1,'#06180d'); }
       b.fillStyle = g; b.fillRect(0,0,w,h);
-      b.globalAlpha = .15; b.fillStyle = '#0f3a20';
+
+      b.globalAlpha = .12;
+      b.fillStyle = (settings.theme === 'light' ? '#d9f0d9' : '#0f3a20');
       for(let i=0;i<8;i++){
         const y = 40 + i*44 + Math.sin(ts*0.0005 + i) * 6;
         const x = ((ts*0.03 + i*140) % (w+240)) - 240;
-        b.beginPath(); b.ellipse(x,y,200,36,0,0,Math.PI*2); b.fill();
+        b.beginPath(); b.ellipse(x,y,220,44,0,0,Math.PI*2); b.fill();
       }
       b.globalAlpha = 1;
-      for(let yy=0;yy<h;yy+=24){
-        for(let xx=0;xx<w;xx+=24){
-          b.fillStyle = ((xx/24 + yy/24) % 2 === 0) ? '#135a24' : '#0c3b17';
-          b.fillRect(xx,yy,24,24);
+      for(let yy=0;yy<h;yy+=28){
+        for(let xx=0;xx<w;xx+=28){
+          if(settings.theme === 'light') b.fillStyle = ((xx/28 + yy/28) % 2 === 0) ? '#f0fbf0' : '#e6f6e6';
+          else b.fillStyle = ((xx/28 + yy/28) % 2 === 0) ? '#144e28' : '#0c3b17';
+          b.fillRect(xx,yy,28,28);
         }
       }
       requestAnimationFrame(loop);
     })(performance.now());
 
-    const show = (html)=>{ panel.innerHTML = html; panel.classList.remove('hidden'); };
+    // helpers
+    const show = (html)=>{ panel.innerHTML = html; panel.classList.remove('hidden'); panel.focus && panel.focus(); };
     const hide = ()=> panel.classList.add('hidden');
     const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
     const R = (x,y,w,h)=>({x,y,w,h});
@@ -56,7 +77,7 @@
       return a;
     }
 
-    // Level 1 (manually defined)
+    // Level 1
     addL(
       [80,260],
       R(W-120,240,40,60),
@@ -72,7 +93,7 @@
       ]
     );
 
-    // Levels 2..20 (generated)
+    // generated levels
     for(let i=2;i<=20;i++){
       const y1 = 100 + ((i*37) % 280), y2 = H - 100 - ((i*53) % 280);
       const walls = [
@@ -85,11 +106,11 @@
     }
 
     function hedge(r){
-      ctx.fillStyle = '#2a8d4e'; ctx.fillRect(r.x,r.y,r.w,r.h);
-      ctx.strokeStyle = '#0d411e'; ctx.lineWidth = 2; ctx.strokeRect(r.x,r.y,r.w,r.h);
+      ctx.fillStyle = (settings.theme === 'light' ? '#8fcf8a' : '#2a8d4e'); ctx.fillRect(r.x,r.y,r.w,r.h);
+      ctx.strokeStyle = (settings.theme === 'light' ? '#3f7a3f' : '#0d411e'); ctx.lineWidth = 2; ctx.strokeRect(r.x,r.y,r.w,r.h);
     }
     function glade(g){
-      ctx.fillStyle = '#b5ec7f'; ctx.fillRect(g.x,g.y,g.w,g.h);
+      ctx.fillStyle = (settings.theme === 'light' ? '#eafded' : '#b5ec7f'); ctx.fillRect(g.x,g.y,g.w,g.h);
       ctx.strokeStyle = '#2b5a2a'; ctx.lineWidth = 2; ctx.strokeRect(g.x,g.y,g.w,g.h);
     }
 
@@ -106,8 +127,8 @@
 
     function tx(s,x,y,sz=18,c='#f3ffe9'){
       ctx.font = `bold ${sz}px ui-rounded, ui-sans-serif`;
-      ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.strokeText(s,x,y);
-      ctx.fillStyle = c; ctx.fillText(s,x,y);
+      ctx.lineWidth = 4; ctx.strokeStyle = (settings.theme === 'light' ? 'rgba(0,0,0,.35)' : 'rgba(0,0,0,.6)'); ctx.strokeText(s,x,y);
+      ctx.fillStyle = (settings.theme === 'light' ? '#053d13' : c); ctx.fillText(s,x,y);
     }
 
     let keys = {};
@@ -120,7 +141,7 @@
       const enemies = L.enm.map(e=>({
         r:{...e.r},
         path: e.path.map(p=>({x:p[0], y:p[1]})),
-        speed: e.speed,
+        speed: ((e.speed || 2) * (window.__fireflySettings?.speedMultiplier || 1)),
         bounce: !!e.bounce,
         idx: 0,
         dir: 1
@@ -144,8 +165,12 @@
           const tgt = e.path[e.idx + e.dir] || e.path[e.idx];
           let dx = tgt.x - (e.r.x + e.r.w/2), dy = tgt.y - (e.r.y + e.r.h/2);
           const dist = Math.hypot(dx,dy) || 1;
-          const move = e.speed * 1.25 * dt;
-          if(dist <= move){
+          const baseMove = e.speed * 1.25 * dt;
+
+          // chase influence (if smartChase enabled)
+          const chaseFactor = window.__fireflySettings?.smartChase ? (window.__fireflySettings.chaseFactor || 0) : 0;
+
+          if(dist <= baseMove){
             if(e.idx + e.dir >= 0 && e.idx + e.dir < e.path.length){
               e.idx += e.dir;
             } else {
@@ -157,9 +182,19 @@
               }
             }
           } else {
-            e.r.x += (dx / dist) * move;
-            e.r.y += (dy / dist) * move;
+            // move towards path target
+            let mx = (dx / dist) * baseMove;
+            let my = (dy / dist) * baseMove;
+            if(chaseFactor){
+              const cdx = p.x - (e.r.x + e.r.w/2), cdy = p.y - (e.r.y + e.r.h/2);
+              const cdist = Math.hypot(cdx,cdy) || 1;
+              mx += (cdx / cdist) * (baseMove * chaseFactor);
+              my += (cdy / cdist) * (baseMove * chaseFactor);
+            }
+            e.r.x += mx;
+            e.r.y += my;
           }
+
           const ex = e.r.x + e.r.w/2, ey = e.r.y + e.r.h/2;
           const dpx = ex - p.x, dpy = ey - p.y;
           if(Math.hypot(dpx,dpy) < p.r + Math.max(e.r.w, e.r.h)/2){
@@ -180,7 +215,7 @@
           ctx.fillStyle = '#e14d4d'; ctx.fillRect(e.r.x,e.r.y,e.r.w,e.r.h);
           ctx.strokeStyle = '#5a1010'; ctx.lineWidth = 2; ctx.strokeRect(e.r.x,e.r.y,e.r.w,e.r.h);
         }
-        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle = (settings.theme === 'light' ? '#053d13' : '#fff'); ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
         ctx.lineWidth = 2; ctx.strokeStyle = '#8dcf7a'; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.stroke();
         tx(`Level ${i+1}/${LV.length}`,12,24);
         tx(`Fireflies ${tokens.length}`,12,48);
@@ -200,7 +235,7 @@
         n && n.addEventListener('click',(e)=>{ e.preventDefault(); hide(); if(i+1 < LV.length) runLevel(i+1); });
       }
 
-      // Use addEventListener rather than reassigning window handlers so other code isn't clobbered
+      // key handling via listeners (cleaner, allows multiple scenes)
       const keydownHandler = (e) => {
         keys[e.key] = true;
         if(e.key && e.key.toLowerCase() === 'r'){ die(); }
@@ -220,24 +255,22 @@
 
       requestAnimationFrame(frame);
 
-      // cleanup when level stops/restarts
+      // cleanup when level ends
       const cleanup = () => {
         window.removeEventListener('keydown', keydownHandler);
         window.removeEventListener('keyup', keyupHandler);
       };
-      // ensure cleanup on die/win when they stop the run loop
       const originalDie = die;
       const originalWin = win;
       die = function(){ cleanup(); originalDie(); };
       win = function(time){ cleanup(); originalWin(time); };
     }
 
+    // UI wiring / expose global functions used by index.html
     const playFn = ()=> boot(0);
     on($("#btn-play"),'click',playFn);
     on($("#cta-play"),'click',playFn);
 
-    // Expose the UI actions expected by index.html (inline handlers look for these globals).
-    // This ensures nav/header buttons work whether they call into the page script or into game.js.
     window.__fireflyBoot = (i=0) => boot(i);
     window.__fireflyShowLevels = () => {
       const cells = Array.from({length:20},(_,i)=>`<div class='cell' data-i='${i}'>${i+1}</div>`).join('');
@@ -248,26 +281,40 @@
     };
     window.__fireflyShowStats = () => {
       show("<h2>Stats</h2><p>Best times saved locally.</p><div style='text-align:right'><a id='x' class='btn ghost' href='#'>Close</a></div>");
-      const x = panel.querySelector('#x');
-      x && x.addEventListener('click',(e)=>{ e.preventDefault(); hide(); });
+      const x = panel.querySelector('#x'); x && x.addEventListener('click',(e)=>{ e.preventDefault(); hide(); });
     };
     window.__fireflyShowOptions = () => {
-      show("<h2>Options</h2><p>More coming soon.</p><div style='text-align:right'><a id='x' class='btn ghost' href='#'>Close</a></div>");
-      const x = panel.querySelector('#x');
-      x && x.addEventListener('click',(e)=>{ e.preventDefault(); hide(); });
+      const html = `
+        <h2>Options</h2>
+        <div class="kv"><label>Enemy speed</label><div><input id="opt-speed" class="range" type="range" min="0.5" max="3" step="0.1" value="${settings.speedMultiplier}"><div id="opt-speed-val">${settings.speedMultiplier}</div></div></div>
+        <div class="kv"><label>Chase factor</label><div><input id="opt-chase" class="range" type="range" min="0" max="1" step="0.05" value="${settings.chaseFactor}"><div id="opt-chase-val">${settings.chaseFactor}</div></div></div>
+        <div style="display:flex;gap:12px;align-items:center;margin-top:8px"><label><input type="checkbox" id="opt-smart" ${settings.smartChase ? 'checked' : ''}> Smart chase</label></div>
+        <div style="margin-top:12px"><label>Theme: </label><select id="opt-theme"><option value="dark" ${settings.theme==='dark'?'selected':''}>Dark</option><option value="light" ${settings.theme==='light'?'selected':''}>Light</option></select></div>
+        <div style='text-align:right;margin-top:12px'><a id='save' class='btn' href='#'>Save</a> <a id='x' class='btn ghost' href='#' style='margin-left:8px'>Close</a></div>
+      `;
+      show(html);
+      const speed = panel.querySelector('#opt-speed'); const speedVal = panel.querySelector('#opt-speed-val');
+      const chase = panel.querySelector('#opt-chase'); const chaseVal = panel.querySelector('#opt-chase-val');
+      const smart = panel.querySelector('#opt-smart'); const themeSel = panel.querySelector('#opt-theme');
+      speed && speed.addEventListener('input', (e)=>{ speedVal.textContent = e.target.value; });
+      chase && chase.addEventListener('input', (e)=>{ chaseVal.textContent = e.target.value; });
+      panel.querySelector('#save') && panel.querySelector('#save').addEventListener('click',(e)=>{
+        e.preventDefault();
+        settings.speedMultiplier = parseFloat(speed.value);
+        settings.chaseFactor = parseFloat(chase.value);
+        settings.smartChase = !!smart.checked;
+        settings.theme = themeSel.value;
+        window.__fireflySettings = settings;
+        saveSettings();
+        hide();
+      });
+      const x = panel.querySelector('#x'); x && x.addEventListener('click',(e)=>{ e.preventDefault(); hide(); });
     };
     window.__fireflyShowHow = () => alert('Collect the glowing fireflies, reach the glade, avoid reds. WASD/Arrows move, R restarts, Esc menu.');
 
     on($("#btn-levels"),'click',()=>{ window.__fireflyShowLevels && window.__fireflyShowLevels(); });
-
-    on($("#btn-stats"),'click',()=>{
-      window.__fireflyShowStats && window.__fireflyShowStats();
-    });
-
-    on($("#btn-options"),'click',()=>{
-      window.__fireflyShowOptions && window.__fireflyShowOptions();
-    });
-
+    on($("#btn-stats"),'click',()=>{ window.__fireflyShowStats && window.__fireflyShowStats(); });
+    on($("#btn-options"),'click',()=>{ window.__fireflyShowOptions && window.__fireflyShowOptions(); });
     on($("#cta-how"),'click',()=> window.__fireflyShowHow && window.__fireflyShowHow());
   }
 
