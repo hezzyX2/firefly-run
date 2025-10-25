@@ -132,7 +132,8 @@
         t += dt;
         let vx = (keys['ArrowRight']||keys['d']||keys['D'] ? 1 : 0) - (keys['ArrowLeft']||keys['a']||keys['A'] ? 1 : 0);
         let vy = (keys['ArrowDown']||keys['s']||keys['S'] ? 1 : 0) - (keys['ArrowUp']||keys['w']||keys['W'] ? 1 : 0);
-        const sp = p.s * ((vx && vy) ? 1.414 : 1);
+        // Normalize diagonal movement so diagonal speed isn't faster than straight movement
+        const sp = p.s * ((vx && vy) ? (1 / Math.SQRT2) : 1);
         p.x = clamp(p.x + (vx ? (vx>0 ? 1 : -1) : 0) * sp, p.r, W - p.r);
         p.y = clamp(p.y + (vy ? (vy>0 ? 1 : -1) : 0) * sp, p.r, H - p.r);
 
@@ -199,7 +200,8 @@
         n && n.addEventListener('click',(e)=>{ e.preventDefault(); hide(); if(i+1 < LV.length) runLevel(i+1); });
       }
 
-      window.onkeydown = (e) => {
+      // Use addEventListener rather than reassigning window handlers so other code isn't clobbered
+      const keydownHandler = (e) => {
         keys[e.key] = true;
         if(e.key && e.key.toLowerCase() === 'r'){ die(); }
         if(e.key === 'Escape'){
@@ -211,36 +213,62 @@
           m && m.addEventListener('click',(ev)=>{ ev.preventDefault(); hide(); });
         }
       };
-      window.onkeyup = (e) => { keys[e.key] = false; };
+      const keyupHandler = (e) => { keys[e.key] = false; };
+
+      window.addEventListener('keydown', keydownHandler);
+      window.addEventListener('keyup', keyupHandler);
 
       requestAnimationFrame(frame);
+
+      // cleanup when level stops/restarts
+      const cleanup = () => {
+        window.removeEventListener('keydown', keydownHandler);
+        window.removeEventListener('keyup', keyupHandler);
+      };
+      // ensure cleanup on die/win when they stop the run loop
+      const originalDie = die;
+      const originalWin = win;
+      die = function(){ cleanup(); originalDie(); };
+      win = function(time){ cleanup(); originalWin(time); };
     }
 
     const playFn = ()=> boot(0);
     on($("#btn-play"),'click',playFn);
     on($("#cta-play"),'click',playFn);
 
-    on($("#btn-levels"),'click',()=>{
+    // Expose the UI actions expected by index.html (inline handlers look for these globals).
+    // This ensures nav/header buttons work whether they call into the page script or into game.js.
+    window.__fireflyBoot = (i=0) => boot(i);
+    window.__fireflyShowLevels = () => {
       const cells = Array.from({length:20},(_,i)=>`<div class='cell' data-i='${i}'>${i+1}</div>`).join('');
       show(`<h2>Select Level</h2><div class='grid'>${cells}</div><div style='text-align:right'><a class='btn ghost' id='back' href='#'>Back</a></div>`);
       panel.querySelectorAll('.cell').forEach(el=>el.addEventListener('click',()=>{ hide(); boot(parseInt(el.dataset.i)); }));
       const back = panel.querySelector('#back');
       back && back.addEventListener('click',(e)=>{ e.preventDefault(); hide(); });
-    });
-
-    on($("#btn-stats"),'click',()=>{
+    };
+    window.__fireflyShowStats = () => {
       show("<h2>Stats</h2><p>Best times saved locally.</p><div style='text-align:right'><a id='x' class='btn ghost' href='#'>Close</a></div>");
       const x = panel.querySelector('#x');
       x && x.addEventListener('click',(e)=>{ e.preventDefault(); hide(); });
-    });
-
-    on($("#btn-options"),'click',()=>{
+    };
+    window.__fireflyShowOptions = () => {
       show("<h2>Options</h2><p>More coming soon.</p><div style='text-align:right'><a id='x' class='btn ghost' href='#'>Close</a></div>");
       const x = panel.querySelector('#x');
       x && x.addEventListener('click',(e)=>{ e.preventDefault(); hide(); });
+    };
+    window.__fireflyShowHow = () => alert('Collect the glowing fireflies, reach the glade, avoid reds. WASD/Arrows move, R restarts, Esc menu.');
+
+    on($("#btn-levels"),'click',()=>{ window.__fireflyShowLevels && window.__fireflyShowLevels(); });
+
+    on($("#btn-stats"),'click',()=>{
+      window.__fireflyShowStats && window.__fireflyShowStats();
     });
 
-    on($("#cta-how"),'click',()=>alert('Collect the glowing fireflies, reach the glade, avoid reds. WASD/Arrows move, R restarts, Esc menu.'));
+    on($("#btn-options"),'click',()=>{
+      window.__fireflyShowOptions && window.__fireflyShowOptions();
+    });
+
+    on($("#cta-how"),'click',()=> window.__fireflyShowHow && window.__fireflyShowHow());
   }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', main); else main();
