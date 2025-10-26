@@ -1,8 +1,5 @@
-/* style.css — Nature Ballet theme (polished)
-   - Modern header, glassy panels, soft gradients, responsive layout
-   - Crisp canvas presentation
-*/
-*{box-sizing:border-box}
+/* Nature Ballet — premium redesign */
+* { box-sizing: border-box; }
 :root{
   --bg-900:#041409;
   --bg-800:#0a321b;
@@ -19,7 +16,7 @@
 /* base */
 html,body{
   margin:0; min-height:100%;
-  background:linear-gradient(180deg,var(--bg-900),#072311);
+  background:linear-gradient(180deg,var(--bg-900),var(--bg-800));
   color:var(--ink);
   font:16px/1.45 ui-rounded, system-ui, "Segoe UI", Inter, Arial;
   -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
@@ -35,11 +32,7 @@ html,body{
   backdrop-filter:blur(6px);
 }
 .brand{display:flex;gap:12px;align-items:center;font-weight:900;letter-spacing:.35px}
-.brand::before{
-  content:""; width:36px;height:36px;border-radius:10px;
-  background:linear-gradient(180deg,#c8f7b0,#6dbc6f);
-  box-shadow:0 6px 18px rgba(0,0,0,.35), inset 0 -3px 10px rgba(0,0,0,.06);
-}
+.brand .logo{font-size:22px;transform:translateY(-1px)}
 
 /* buttons */
 .btn{
